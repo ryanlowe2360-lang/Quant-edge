@@ -38,7 +38,7 @@ export function useDbSync() {
             const exists = store.watchlist.find((w) => w.symbol === item.symbol);
             if (!exists) {
               store.addToWatchlist({
-                symbol: item.symbol,
+                symbol: item.symbol, name: item.symbol,
                 addedAt: item.date_added || item.created_at,
                 quantRank: item.quant_rank,
                 quantScore: item.quant_score,
