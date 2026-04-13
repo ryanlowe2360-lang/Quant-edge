@@ -158,7 +158,7 @@ export function runBacktest(
   // ── Main simulation loop ──
   for (let i = WARMUP; i < maxBars; i++) {
     // Check exits first
-    for (const [sym, pos] of openPositions.entries()) {
+    for (const [sym, pos] of Array.from(openPositions.entries())) {
       const bars = allBars[sym];
       if (!bars || i >= bars.length) continue;
 
@@ -291,7 +291,7 @@ export function runBacktest(
   }
 
   // Close any remaining positions at last price
-  for (const [sym, pos] of openPositions.entries()) {
+  for (const [sym, pos] of Array.from(openPositions.entries())) {
     const bars = allBars[sym];
     if (!bars || bars.length === 0) continue;
     const lastBar = bars[bars.length - 1];

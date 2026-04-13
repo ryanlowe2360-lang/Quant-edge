@@ -29,7 +29,7 @@ async function fetchFearGreed(vixLevel: number, spyChangePercent: number): Promi
   try {
     const res = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
       headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(5000),
+      
     });
     if (res.ok) {
       const data = await res.json();
