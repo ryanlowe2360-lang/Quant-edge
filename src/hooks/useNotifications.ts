@@ -87,7 +87,7 @@ export function useNotifications() {
     if (permissionRef.current !== "granted") return;
     if (swRegistration) {
       swRegistration.showNotification(title, {
-        body, icon: "/icon-192.png", tag: tag || `qe-${Date.now()}`, vibrate: [200, 100, 200],
+        body, icon: "/icon-192.png", tag: tag || `qe-${Date.now()}`,
       });
     } else if ("Notification" in window) {
       new Notification(title, { body, icon: "/icon-192.png", tag });
