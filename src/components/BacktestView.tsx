@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Settings2,
 } from "lucide-react";
+import OptionsSnapshotsViewer from "./OptionsSnapshotsViewer";
 
 export default function BacktestView() {
   const { watchlist } = useStore();
@@ -344,6 +345,9 @@ export default function BacktestView() {
           </p>
         </div>
       )}
+
+      {/* Options Snapshots Data Browser */}
+      <OptionsSnapshotsViewer />
     </div>
   );
 }

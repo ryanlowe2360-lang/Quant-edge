@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { WatchlistStock } from "@/lib/types";
-import { Plus, Trash2, Upload, X, RotateCcw, Hash } from "lucide-react";
+import { Plus, Trash2, Upload, X, RotateCcw, Hash, Archive } from "lucide-react";
 import { syncWatchlistAdd, syncWatchlistRemove } from "@/hooks/useDbSync";
+import WatchlistArchive from "./WatchlistArchive";
 
 export default function Watchlist() {
   const { watchlist, addToWatchlist, removeFromWatchlist, quotes, signals, optionsLiquidity } = useStore();
@@ -12,6 +13,7 @@ export default function Watchlist() {
   const [bulkInput, setBulkInput] = useState("");
   const [showBulk, setShowBulk] = useState(false);
   const [rankInput, setRankInput] = useState("");
+  const [showArchive, setShowArchive] = useState(false);
 
   // Single add with optional rank
   const handleAdd = () => {
@@ -208,6 +210,23 @@ export default function Watchlist() {
                 </div>
               );
             })}
+        </div>
+      )}
+
+      {/* Archive Toggle */}
+      <div className="mt-4">
+        <button
+          onClick={() => setShowArchive(!showArchive)}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-hover border border-bg-border text-text-secondary text-xs font-mono hover:border-accent-blue/40 hover:text-accent-blue transition-all"
+        >
+          <Archive className="w-3.5 h-3.5" />
+          {showArchive ? "Hide Archive" : "View Past Watchlists"}
+        </button>
+      </div>
+
+      {showArchive && (
+        <div className="mt-3">
+          <WatchlistArchive />
         </div>
       )}
     </div>

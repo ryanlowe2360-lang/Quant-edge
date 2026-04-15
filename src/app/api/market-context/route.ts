@@ -1,6 +1,6 @@
 // ============================================================
 // GET /api/market-context
-// Fetches SPY + real VIX from Tradier and returns market regime
+// Fetches SPY from Alpaca + real VIX from Tradier, returns regime
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -14,15 +14,16 @@ const TRADIER_BASE = process.env.TRADIER_SANDBOX === "true"
 export async function GET() {
   try {
     // Fetch SPY from Alpaca
-    const spyQuote = await getSnapshot("SPY").catch(() => null);
+    const spyQuote = await getSnapshot("SPY");
     const spyChange = spyQuote?.changePercent || 0;
 
-    // Fetch real VIX from Tradier (VIX is an index, not available on Alpaca)
+    // Fetch real VIX index from Tradier (not VIXY ETF proxy)
     let vixLevel = 18; // default fallback
     const tradierKey = process.env.TRADIER_API_KEY;
+
     if (tradierKey) {
       try {
-        const res = await fetch(
+        const vixRes = await fetch(
           `${TRADIER_BASE}/markets/quotes?symbols=VIX&greeks=false`,
           {
             headers: {
@@ -31,11 +32,11 @@ export async function GET() {
             },
           }
         );
-        if (res.ok) {
-          const data = await res.json();
-          const quote = data?.quotes?.quote;
-          if (quote) {
-            vixLevel = quote.last || quote.close || 18;
+        if (vixRes.ok) {
+          const vixData = await vixRes.json();
+          const vixQuote = vixData?.quotes?.quote;
+          if (vixQuote) {
+            vixLevel = vixQuote.last || vixQuote.close || 18;
           }
         }
       } catch (err) {

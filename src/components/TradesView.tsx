@@ -11,6 +11,7 @@ import {
   DollarSign, TrendingUp, TrendingDown, Target, BarChart3, Award,
   AlertTriangle, Download, Plus, X, ArrowUp, ArrowDown, Users, Bot,
 } from "lucide-react";
+import EquityCurve from "./EquityCurve";
 
 type ViewTab = "user" | "system" | "compare";
 
@@ -186,6 +187,13 @@ export default function TradesView() {
               <StatsColumn title="System Trades" stats={allTimeComparison.system} color="green" />
             </div>
           </div>
+
+          {/* Equity Curves */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <EquityCurve trades={paperTrades} startingBalance={startingBalance} source="USER" />
+            <EquityCurve trades={paperTrades} startingBalance={startingBalance} source="SYSTEM" />
+          </div>
+          <EquityCurve trades={paperTrades} startingBalance={startingBalance} source="ALL" />
         </div>
       )}
 

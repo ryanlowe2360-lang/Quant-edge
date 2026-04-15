@@ -62,6 +62,31 @@ export default function ReportsView() {
     if (ok) setTimeout(() => setSent(null), 3000);
   };
 
+  // Generate server-side report (pulls from Supabase, stores in DB, sends Telegram)
+  const [serverGenerating, setServerGenerating] = useState(false);
+  const [serverResult, setServerResult] = useState<string | null>(null);
+  const handleServerGenerate = async (type: ReportTab) => {
+    setServerGenerating(true);
+    setServerResult(null);
+    try {
+      const res = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, sendTelegram: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setServerResult("✅ Report generated, saved to DB, and sent to Telegram!");
+      } else {
+        setServerResult(`❌ ${data.error || "Failed to generate"}`);
+      }
+    } catch (err) {
+      setServerResult("❌ Server error — check Supabase connection");
+    }
+    setServerGenerating(false);
+    setTimeout(() => setServerResult(null), 5000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Tab bar */}
@@ -79,7 +104,26 @@ export default function ReportsView() {
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
+
+        {/* Server-side generate button */}
+        <button
+          onClick={() => handleServerGenerate(tab)}
+          disabled={serverGenerating}
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bg-hover border border-bg-border text-text-secondary text-xs font-mono hover:border-accent-blue/40 hover:text-accent-blue transition-all disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3 h-3 ${serverGenerating ? "animate-spin" : ""}`} />
+          {serverGenerating ? "Generating..." : "Generate from DB"}
+        </button>
       </div>
+
+      {/* Server result banner */}
+      {serverResult && (
+        <div className={`rounded-lg px-4 py-2 text-xs font-mono ${
+          serverResult.startsWith("✅") ? "bg-accent-green-dim text-accent-green" : "bg-accent-red-dim text-accent-red"
+        }`}>
+          {serverResult}
+        </div>
+      )}
 
       {/* Morning Briefing */}
       {tab === "morning" && (

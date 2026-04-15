@@ -1,6 +1,7 @@
 // ============================================================
 // POST /api/record-options
-// Snapshots real-time options data from Tradier and saves to Supabase
+// Snapshots options data from Tradier and saves to Supabase
+// Records summary: top 5 ATM contracts per symbol per expiry
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,8 +18,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No symbols provided" }, { status: 400 });
     }
 
-    let recorded = 0;
     const db = getSupabaseServer();
+    let recorded = 0;
 
     for (const sym of symbols.slice(0, 10)) {
       try {
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
         if (expirations.length === 0) continue;
 
         const nearExpiries = expirations.slice(0, 3);
+        const stockPrice = stockPrices[sym] || 0;
 
         for (const expiry of nearExpiries) {
           const chain = await getOptionsChain(sym, expiry);
@@ -35,34 +37,31 @@ export async function POST(req: NextRequest) {
           const expiryDate = new Date(expiry + "T16:00:00");
           const dte = Math.max(0, Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000));
 
+          // Only save ATM ± 5 strikes to keep data small
+          const atmStrike = chain.reduce((best: any, c: any) =>
+            Math.abs(c.strike - stockPrice) < Math.abs(best.strike - stockPrice) ? c : best
+          );
+          const nearATM = chain.filter((c: any) =>
+            Math.abs(c.strike - atmStrike.strike) <= (stockPrice * 0.05)
+          );
+
           const snapshot = {
-            timestamp: now.toISOString(),
             symbol: sym,
-            stockPrice: stockPrices[sym] || 0,
-            contracts: chain.map((c: any) => ({
-              symbol: c.symbol || "",
-              type: c.type === "put" ? "PUT" : "CALL",
-              strike: c.strike || 0,
-              expiry,
-              bid: c.bid || 0,
-              ask: c.ask || 0,
-              last: c.last || 0,
-              volume: c.volume || 0,
-              openInterest: c.openInterest || c.open_interest || 0,
-              delta: c.delta || c.greeks?.delta || 0,
-              gamma: c.gamma || c.greeks?.gamma || 0,
-              theta: c.theta || c.greeks?.theta || 0,
-              vega: c.vega || c.greeks?.vega || 0,
-              impliedVolatility: c.impliedVolatility || c.greeks?.mid_iv || 0,
-              dte,
+            stock_price: stockPrice,
+            expiry,
+            dte,
+            snapshot_json: nearATM.map((c: any) => ({
+              type: c.type,
+              strike: c.strike,
+              bid: c.bid, ask: c.ask, last: c.last,
+              volume: c.volume, oi: c.openInterest,
+              delta: c.delta, gamma: c.gamma, theta: c.theta, vega: c.vega,
+              iv: c.impliedVolatility,
             })),
+            recorded_at: now.toISOString(),
           };
 
-          await db.from("options_snapshots").insert({
-            symbol: sym,
-            snapshot_json: snapshot,
-          });
-
+          await db.from("options_snapshots").insert(snapshot);
           recorded++;
         }
 
@@ -86,24 +85,37 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+// GET — return recording stats and recent snapshots
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const symbol = searchParams.get("symbol");
+    const limit = parseInt(searchParams.get("limit") || "50");
     const db = getSupabaseServer();
 
-    const { data, error } = await db
-      .from("options_snapshots")
-      .select("symbol, created_at")
-      .order("created_at", { ascending: false })
-      .limit(100);
+    let query = db.from("options_snapshots")
+      .select("symbol, stock_price, expiry, dte, snapshot_json, recorded_at")
+      .order("recorded_at", { ascending: false })
+      .limit(limit);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (symbol) query = query.eq("symbol", symbol.toUpperCase());
 
-    const days = new Set((data || []).map((r: any) => r.created_at.slice(0, 10)));
+    const { data, error } = await query;
+    if (error) {
+      // Table might not exist yet — return empty gracefully
+      if (error.message.includes("does not exist")) {
+        return NextResponse.json({ snapshots: [], totalRecords: 0, needsMigration: true });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Group by date for stats
+    const dates = new Set((data || []).map((d: any) => d.recorded_at?.slice(0, 10)));
 
     return NextResponse.json({
-      totalRecords: data?.length || 0,
-      daysRecorded: days.size,
-      recentSymbols: [...new Set((data || []).map((r: any) => r.symbol))],
+      snapshots: data || [],
+      totalRecords: (data || []).length,
+      daysRecorded: dates.size,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
